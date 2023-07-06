@@ -8,7 +8,7 @@ import { Toaster, toast } from "react-hot-toast";
 type providers = "Email" | "Google" | "GitHub";
 
 export default function UpgradeUser() {
-  const { getCredentials, googleSignIn, gitHubSignIn, UpgradeUser } = useAuth();
+  const { UpgradeUser, updateUserProfile, setUser } = useAuth();
   const {
     register: form,
     handleSubmit,
@@ -51,14 +51,15 @@ export default function UpgradeUser() {
           duration: 5000,
         },
       }
-    );
+    ).then((result) => {
+      setUser(result.user);
+    })
   };
 
   const upgradeWithGitHub = async () => {
     toast.promise(
       UpgradeUser({
         provider: "Github",
-        idToken: "",
       }),
       {
         loading: "Loading ...",
@@ -71,14 +72,18 @@ export default function UpgradeUser() {
           duration: 5000,
         },
       }
-    );
+    ).then(async (result) => {
+      await updateUserProfile({
+        displayName: result.user.displayName!,
+        profileUrl: result.user.photoURL!
+      })
+    })
   };
 
   const upgradeWithGoogle = async () => {
     toast.promise(
       UpgradeUser({
         provider: "Google",
-        idToken: "",
       }),
       {
         loading: "Loading ...",
@@ -91,7 +96,12 @@ export default function UpgradeUser() {
           duration: 5000,
         },
       }
-    );
+    ).then(async (result) => {
+      await updateUserProfile({
+        displayName: result.user.displayName!,
+        profileUrl: result.user.photoURL!
+      })
+    })
   };
 
   return (

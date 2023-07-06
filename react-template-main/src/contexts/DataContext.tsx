@@ -27,6 +27,7 @@ export function FirestoreProvider({ children }: FirestoreContextProps) {
     const collectionRef = collection(db, "posts");
     const collectionQuery = query(collectionRef);
     return getDocs(collectionQuery);
+    
   }
 
   const value = {

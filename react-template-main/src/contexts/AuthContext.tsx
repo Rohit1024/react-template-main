@@ -15,12 +15,14 @@ import {
   EmailAuthProvider,
   linkWithCredential,
   OAuthCredential,
+  linkWithPopup,
 } from "firebase/auth";
 import React, { useContext, useState, useEffect, createContext } from "react";
 import { auth } from "../config/firebase";
 
 type AuthProviderProps = {
   user: User | null;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>
   register(email: string, password: string): Promise<UserCredential>;
   login(email: string, password: string): Promise<UserCredential>;
   logOut(): Promise<void>;
@@ -29,14 +31,11 @@ type AuthProviderProps = {
   googleSignIn(): Promise<UserCredential>;
   gitHubSignIn(): Promise<UserCredential>;
   anonymousSignIn(): Promise<UserCredential>;
-  updateUserProfile(data: { displayName: string }): Promise<void>;
+  updateUserProfile(data: {
+    displayName: string;
+    profileUrl?: string;
+}): Promise<void>
   UpgradeUser(value: upgradeUserType): Promise<UserCredential>;
-  getCredentials(
-    provider: "Google" | "GitHub"
-  ): (
-    idToken?: string | null | undefined,
-    accessToken?: string | null | undefined
-  ) => OAuthCredential;
 };
 
 type upgradeUserType =
@@ -49,11 +48,9 @@ type upgradeUserType =
     }
   | {
       provider: "Google";
-      idToken: string;
     }
   | {
       provider: "Github";
-      idToken: string;
     };
 
 const AuthContext = createContext({} as AuthProviderProps);
@@ -106,14 +103,6 @@ export function AuthProvider({ children }: AuthContextProps) {
     return signInAnonymously(auth);
   }
 
-  function getCredentials(provider: "Google" | "GitHub") {
-    if (provider === "Google") {
-      return GoogleAuthProvider.credential;
-    } else if (provider === "GitHub") {
-      return GithubAuthProvider.credential;
-    } else throw new Error("Invalid Provider");
-  }
-
   function UpgradeUser(value: upgradeUserType) {
     if (value.provider === "Email") {
       const credential = EmailAuthProvider.credential(
@@ -122,17 +111,18 @@ export function AuthProvider({ children }: AuthContextProps) {
       );
       return linkWithCredential(auth.currentUser!, credential);
     } else if (value.provider === "Google") {
-      const credential = GoogleAuthProvider.credential(value.idToken);
-      return linkWithCredential(auth.currentUser!, credential);
+      const provider = new GoogleAuthProvider();
+      return linkWithPopup(auth.currentUser!, provider);
     } else if (value.provider === "Github") {
-      const credential = GithubAuthProvider.credential(value.idToken);
-      return linkWithCredential(auth.currentUser!, credential);
+      const provider = new GithubAuthProvider();
+      return linkWithPopup(auth.currentUser!, provider);
     } else throw new Error("Invalid Provider");
   }
 
-  function updateUserProfile(data: { displayName: string }) {
+  function updateUserProfile(data: { displayName: string, profileUrl? : string }) {
     return updateProfile(user!, {
       displayName: data.displayName,
+      photoURL: data.profileUrl || "https://www.svgrepo.com/show/514283/user.svg"
     });
   }
 
@@ -144,10 +134,11 @@ export function AuthProvider({ children }: AuthContextProps) {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [user]);
 
   const value = {
     user,
+    setUser,
     register,
     login,
     logOut,
@@ -158,7 +149,6 @@ export function AuthProvider({ children }: AuthContextProps) {
     anonymousSignIn,
     updateUserProfile,
     UpgradeUser,
-    getCredentials,
   };
 
   return (
